@@ -201,11 +201,11 @@ void cannot_execute(int client)
  * on value of errno, which indicates system call errors) and exit the
  * program indicating an error. */
 /**********************************************************************/
-void error_die(const char *sc)
-{
- perror(sc);
- exit(1);
+void error_die(const char* sc) {
+    perror(sc);
+    exit(1);
 }
+
 
 /**********************************************************************/
 /* Execute a CGI script.  Will need to set environment variables as
@@ -432,33 +432,28 @@ void serve_file(int client, const char *filename)
  * Parameters: pointer to variable containing the port to connect on
  * Returns: the socket */
 /**********************************************************************/
-int startup(u_short *port)
-{
- int httpd = 0;
- struct sockaddr_in name;
+int startup(u_short* port) {
+    struct sockaddr_in name;
+    int httpd = socket(AF_INET, SOCK_STREAM, 0);
+    if (httpd == -1) error_die("socket");
 
- printf("+ %s()\n", __FUNCTION__);
- httpd = socket(PF_INET, SOCK_STREAM, 0);
- if (httpd == -1)
-  error_die("socket");
- memset(&name, 0, sizeof(name));
- name.sin_family = AF_INET;
- name.sin_port = htons(*port);
- name.sin_addr.s_addr = htonl(INADDR_ANY);
- if (bind(httpd, (struct sockaddr *)&name, sizeof(name)) < 0)
-  error_die("bind");
- if (*port == 0)  /* if dynamically allocating a port */
- {
-  int namelen = sizeof(name);
-  if (getsockname(httpd, (struct sockaddr *)&name, &namelen) == -1)
-   error_die("getsockname");
-  *port = ntohs(name.sin_port);
- }
- if (listen(httpd, 5) < 0)
-  error_die("listen");
+    memset(&name, 0, sizeof(name));
+    name.sin_family       = AF_INET;
+    name.sin_port         = htons(*port);
+    name.sin_addr.s_addr  = htonl(INADDR_ANY);  //inet_addr("192.168.0.1");
+    if (bind(httpd, (struct sockaddr *)&name, sizeof(name)) < 0) error_die("bind");
 
-    printf("- %s()\n", __FUNCTION__);
- return(httpd);
+    /* if dynamically allocating a port */
+    if (*port == 0) {
+        int namelen = sizeof(name);
+        if (getsockname(httpd, (struct sockaddr *)&name, &namelen) == -1) error_die("getsockname");
+
+        *port = ntohs(name.sin_port);
+    }
+
+    if (listen(httpd, 5) < 0) error_die("listen");
+
+    return(httpd);
 }
 
 /**********************************************************************/
@@ -490,8 +485,7 @@ void unimplemented(int client)
 
 /**********************************************************************/
 
-int main(void)
-{
+int main(void) {
     int server_sock = -1;
     u_short port = 0;
     int client_sock = -1;
@@ -501,10 +495,8 @@ int main(void)
 
     server_sock = startup(&port);
     printf("http server running on port %d\n", port);
-    printf("goto while\n");
 
-    while (1)
-    {
+    while (1) {
         printf("Waiting for client: %d\n", port);
         client_sock = accept(server_sock,
                              (struct sockaddr *)&client_name,
