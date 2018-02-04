@@ -434,24 +434,25 @@ void serve_file(int client, const char *filename)
 /**********************************************************************/
 int startup(u_short* port) {
     struct sockaddr_in name;
-    int httpd = socket(AF_INET, SOCK_STREAM, 0);
-    if (httpd == -1) error_die("socket");
+    struct sockaddr* addr_ptr = (struct sockaddr*)&name;
+    int httpd = socket(AF_INET, SOCK_STREAM, 0);      // AF_INET or PF_INET
+    if (-1 == httpd) error_die("socket");
 
     memset(&name, 0, sizeof(name));
     name.sin_family       = AF_INET;
     name.sin_port         = htons(*port);
     name.sin_addr.s_addr  = htonl(INADDR_ANY);  //inet_addr("192.168.0.1");
-    if (bind(httpd, (struct sockaddr *)&name, sizeof(name)) < 0) error_die("bind");
+    if (-1 == bind(httpd, addr_ptr, sizeof(name))) error_die("bind");
 
     /* if dynamically allocating a port */
-    if (*port == 0) {
-        int namelen = sizeof(name);
-        if (getsockname(httpd, (struct sockaddr *)&name, &namelen) == -1) error_die("getsockname");
+    if (0 == *port) {
+        unsigned int namelen = sizeof(name);
+        if (-1 == getsockname(httpd, addr_ptr, &namelen)) error_die("getsockname");
 
         *port = ntohs(name.sin_port);
     }
 
-    if (listen(httpd, 5) < 0) error_die("listen");
+    if (-1 == listen(httpd, 5)) error_die("listen");
 
     return(httpd);
 }
@@ -490,7 +491,7 @@ int main(void) {
     u_short port = 0;
     int client_sock = -1;
     struct sockaddr_in client_name;
-    int client_name_len = sizeof(client_name);
+    unsigned int client_name_len = sizeof(client_name);
     // pthread_t newthread;
 
     server_sock = startup(&port);
