@@ -57,45 +57,42 @@ void accept_request(int client)
     char path[512];
     size_t i, j;
     struct stat st;
-    int cgi = 0;      /* becomes true if server decides this is a CGI
-                    * program */
+    int cgi = 0;
     char *query_string = NULL;
 
-    printf("+ %s()\n", __FUNCTION__);
     numchars = get_line(client, buf, sizeof(buf));
-    i = 0; j = 0;
-    while (!ISspace(buf[j]) && (i < sizeof(method) - 1))
-    {
-    method[i] = buf[j];
-    i++; j++;
+    i = j = 0;
+    while (!ISspace(buf[j]) && (i < sizeof(method) - 1)) {
+        method[i] = buf[j];
+        i++; j++;
     }
     method[i] = '\0';
+    //printf("Method: %s\n", method);
 
-    if (strcasecmp(method, "GET") && strcasecmp(method, "POST"))
-    {
+    if (strcasecmp(method, "GET") && strcasecmp(method, "POST")) {
         unimplemented(client);
         printf("Unimplement method: %s\n", method);
         return;
     }
 
     if (strcasecmp(method, "POST") == 0)
-    cgi = 1;
+        cgi = 1;
 
     i = 0;
     while (ISspace(buf[j]) && (j < sizeof(buf)))
-    j++;
-    while (!ISspace(buf[j]) && (i < sizeof(url) - 1) && (j < sizeof(buf)))
-    {
-    url[i] = buf[j];
-    i++; j++;
+        j++;
+
+    while (!ISspace(buf[j]) && (i < sizeof(url) - 1) && (j < sizeof(buf))) {
+        url[i] = buf[j];
+        i++; j++;
     }
     url[i] = '\0';
+    printf("Url: %s\n", url);
 
-    if (strcasecmp(method, "GET") == 0)
-    {
+    if (0 == strcasecmp(method, "GET")) {
         query_string = url;
         while ((*query_string != '?') && (*query_string != '\0'))
-        query_string++;
+            query_string++;
         if (*query_string == '?')
         {
             cgi = 1;
@@ -108,7 +105,7 @@ void accept_request(int client)
     if (path[strlen(path) - 1] == '/')
         strcat(path, "index.html");
 
-    printf("File path: %s\n", path);
+    // printf("File path: %s\n", path);
     if (stat(path, &st) == -1) {
         printf("File is not found \n");
         while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
@@ -136,7 +133,6 @@ void accept_request(int client)
     }
 
     close(client);
-    printf("- %s()\n", __FUNCTION__);
 }
 
 /**********************************************************************/
@@ -316,36 +312,30 @@ void execute_cgi(int client, const char *path,
  *             the size of the buffer
  * Returns: the number of bytes stored (excluding null) */
 /**********************************************************************/
-int get_line(int sock, char *buf, int size)
-{
- int i = 0;
- char c = '\0';
- int n;
+int get_line(int sock, char* buf, int size) {
+    int i   = 0;
+    char c  = '\0';
+    int n;
 
- while ((i < size - 1) && (c != '\n'))
- {
-  n = recv(sock, &c, 1, 0);
-  /* DEBUG printf("%02X\n", c); */
-  if (n > 0)
-  {
-   if (c == '\r')
-   {
-    n = recv(sock, &c, 1, MSG_PEEK);
-    /* DEBUG printf("%02X\n", c); */
-    if ((n > 0) && (c == '\n'))
-     recv(sock, &c, 1, 0);
-    else
-     c = '\n';
-   }
-   buf[i] = c;
-   i++;
-  }
-  else
-   c = '\n';
- }
- buf[i] = '\0';
- 
- return(i);
+    while ((i < size - 1) && (c != '\n')) {
+        n = recv(sock, &c, 1, 0);
+        if (n > 0) {
+            if (c == '\r') {
+              n = recv(sock, &c, 1, MSG_PEEK);
+              if ((n > 0) && (c == '\n'))
+                recv(sock, &c, 1, 0);
+              else
+                c = '\n';
+            }
+            buf[i] = c;
+            ++i;
+        } else
+          c = '\n';
+    }
+    buf[i] = '\0';
+    printf("%s", buf);
+
+    return(i);
 }
 
 /**********************************************************************/
@@ -353,19 +343,18 @@ int get_line(int sock, char *buf, int size)
 /* Parameters: the socket to print the headers on
  *             the name of the file */
 /**********************************************************************/
-void headers(int client, const char *filename)
-{
- char buf[1024];
- (void)filename;  /* could use filename to determine file type */
+void headers(int client, const char* filename) {
+    char buf[1024];
+    (void)filename;  /* could use filename to determine file type */
 
- strcpy(buf, "HTTP/1.0 200 OK\r\n");
- send(client, buf, strlen(buf), 0);
- strcpy(buf, SERVER_STRING);
- send(client, buf, strlen(buf), 0);
- sprintf(buf, "Content-Type: text/html\r\n");
- send(client, buf, strlen(buf), 0);
- strcpy(buf, "\r\n");
- send(client, buf, strlen(buf), 0);
+    strcpy(buf, "HTTP/1.0 200 OK\r\n");
+    send(client, buf, strlen(buf), 0);
+    strcpy(buf, SERVER_STRING);
+    send(client, buf, strlen(buf), 0);
+    sprintf(buf, "Content-Type: text/html\r\n");
+    send(client, buf, strlen(buf), 0);
+    strcpy(buf, "\r\n");
+    send(client, buf, strlen(buf), 0);
 }
 
 /**********************************************************************/
@@ -402,26 +391,26 @@ void not_found(int client)
  *              file descriptor
  *             the name of the file to serve */
 /**********************************************************************/
-void serve_file(int client, const char *filename)
-{
+void serve_file(int client, const char* filename) {
     FILE *resource = NULL;
     int numchars = 1;
     char buf[1024];
 
-    printf("%s()\n", __FUNCTION__);
+    printf("+ %s()\n", __FUNCTION__);
     buf[0] = 'A'; buf[1] = '\0';
     while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
-    numchars = get_line(client, buf, sizeof(buf));
+      numchars = get_line(client, buf, sizeof(buf));
 
     resource = fopen(filename, "r");
     if (resource == NULL)
-    not_found(client);
-    else
-    {
+      not_found(client);
+    else {
         headers(client, filename);
         cat(client, resource);
     }
+
     fclose(resource);
+    printf("- %s()\n", __FUNCTION__);
 }
 
 /**********************************************************************/
@@ -498,11 +487,10 @@ int main(void) {
     printf("http server running on port %d\n", port);
 
     while (1) {
-        printf("Waiting for client: %d\n", port);
         client_sock = accept(server_sock,
                              (struct sockaddr *)&client_name,
                              &client_name_len);
-        if (client_sock == -1)
+        if (-1 == client_sock)
             error_die("accept");
         else
             printf("A new client in\n");
@@ -514,7 +502,7 @@ int main(void) {
         */
     }
 
+    printf("Exit main");
     close(server_sock);
-
     return(0);
 }
